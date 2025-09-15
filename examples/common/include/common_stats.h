@@ -1,18 +1,17 @@
 /*
- * Copyright (c) 2020-2022 Gustavo Valiente gustavo.valiente@protonmail.com
+ * Copyright (c) 2020-2025 Gustavo Valiente gustavo.valiente@protonmail.com
  * zlib License, see LICENSE file.
  */
 
 #ifndef COMMON_STATS_H
 #define COMMON_STATS_H
 
-#include "bn_vector.h"
 #include "bn_sprite_ptr.h"
-#include "bn_fixed_point.h"
+#include "bn_vector.h"
 
 namespace bn
 {
-    class sprite_text_generator;
+class sprite_text_generator;
 }
 
 namespace common
@@ -50,6 +49,6 @@ private:
     int _counter = 0;
 };
 
-}
+} // namespace common
 
 #endif

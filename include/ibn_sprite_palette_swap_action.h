@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2020-2023 Gustavo Valiente gustavo.valiente@protonmail.com
- * zlib License, see LICENSE file.
+ * Copyright (c) 2020-2025 Gustavo Valiente gustavo.valiente@protonmail.com
+ * zlib License, see `licenses/butano.txt` file.
  *
  * 2023-03-24: Modified by copyrat90
- *   + `iso_bn::sprite_palette_swap_toggle_action` is an ALTERED version of `bn::sprite_palette_inverted_toggle_action`,
+ *   + `ibn::sprite_palette_swap_toggle_action` is an ALTERED version of `bn::sprite_palette_inverted_toggle_action`,
  *     which changes it to toggle between two sprite palettes.
  */
 
-#ifndef ISO_BN_SPRITE_PALETTE_SWAP_ACTION_H
-#define ISO_BN_SPRITE_PALETTE_SWAP_ACTION_H
+#ifndef IBN_SPRITE_PALETTE_SWAP_ACTION_H
+#define IBN_SPRITE_PALETTE_SWAP_ACTION_H
 
-#include "bn_sprite_palette_item.h"
-#include "bn_sprite_palette_ptr.h"
-#include "bn_value_template_actions.h"
+#include <bn_sprite_palette_item.h>
+#include <bn_sprite_palette_ptr.h>
+#include <bn_value_template_actions.h>
 
-namespace iso_bn
+namespace ibn
 {
 
 // swap
@@ -117,6 +117,6 @@ public:
     }
 };
 
-} // namespace iso_bn
+} // namespace ibn
 
 #endif

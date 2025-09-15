@@ -1,16 +1,16 @@
-#include "bn_array.h"
-#include "bn_bg_palettes.h"
-#include "bn_core.h"
-#include "bn_fixed.h"
-#include "bn_format.h"
-#include "bn_keypad.h"
-#include "bn_sprite_ptr.h"
-#include "bn_sprite_text_generator.h"
-#include "bn_string_view.h"
+#include "ibn_sprite_palette_swap_action.h"
+#include "ibn_variable_wait_sprite_animate_action.h"
 
-#include "bn_vector.h"
-#include "iso_bn_sprite_palette_swap_action.h"
-#include "iso_bn_variable_wait_sprite_animate_action.h"
+#include <bn_array.h>
+#include <bn_bg_palettes.h>
+#include <bn_core.h>
+#include <bn_fixed.h>
+#include <bn_format.h>
+#include <bn_keypad.h>
+#include <bn_sprite_ptr.h>
+#include <bn_sprite_text_generator.h>
+#include <bn_string_view.h>
+#include <bn_vector.h>
 
 #include "bn_sprite_items_cavegirl.h"
 #include "bn_sprite_items_ninja.h"
@@ -33,7 +33,7 @@ void animation_once_scene(bn::sprite_text_generator& text_generator)
     common::info info("Variable wait animation once", info_text_lines, text_generator);
 
     bn::sprite_ptr ninja_sprite = bn::sprite_items::ninja.create_sprite(0, 0);
-    iso_bn::variable_wait_sprite_animate_action<4> action = iso_bn::variable_wait_sprite_animate_action<4>::once(
+    ibn::variable_wait_sprite_animate_action<4> action = ibn::variable_wait_sprite_animate_action<4>::once(
         ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{0, 1, 2, 3},
         bn::array<uint16_t, 4>{3, 4, 0, 2});
 
@@ -58,14 +58,14 @@ void animation_once_scene(bn::sprite_text_generator& text_generator)
 
         if (bn::keypad::left_pressed())
         {
-            action = iso_bn::variable_wait_sprite_animate_action<4>::once(
+            action = ibn::variable_wait_sprite_animate_action<4>::once(
                 ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{8, 9, 10, 11},
                 bn::array<uint16_t, 4>{3, 4, 0, 2});
             update_action_info();
         }
         else if (bn::keypad::right_pressed())
         {
-            action = iso_bn::variable_wait_sprite_animate_action<4>::once(
+            action = ibn::variable_wait_sprite_animate_action<4>::once(
                 ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{12, 13, 14, 15},
                 bn::array<uint16_t, 4>{3, 4, 0, 2});
             update_action_info();
@@ -73,14 +73,14 @@ void animation_once_scene(bn::sprite_text_generator& text_generator)
 
         if (bn::keypad::up_pressed())
         {
-            action = iso_bn::variable_wait_sprite_animate_action<4>::once(
+            action = ibn::variable_wait_sprite_animate_action<4>::once(
                 ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{4, 5, 6, 7},
                 bn::array<uint16_t, 4>{3, 4, 0, 2});
             update_action_info();
         }
         else if (bn::keypad::down_pressed())
         {
-            action = iso_bn::variable_wait_sprite_animate_action<4>::once(
+            action = ibn::variable_wait_sprite_animate_action<4>::once(
                 ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{0, 1, 2, 3},
                 bn::array<uint16_t, 4>{3, 4, 0, 2});
             update_action_info();
@@ -102,7 +102,7 @@ void animation_forever_scene(bn::sprite_text_generator& text_generator)
     common::info info("Variable wait animation forever", info_text_lines, text_generator);
 
     bn::sprite_ptr ninja_sprite = bn::sprite_items::ninja.create_sprite(0, 0);
-    iso_bn::variable_wait_sprite_animate_action<4> action = iso_bn::variable_wait_sprite_animate_action<4>::forever(
+    ibn::variable_wait_sprite_animate_action<4> action = ibn::variable_wait_sprite_animate_action<4>::forever(
         ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{0, 1, 2, 3},
         bn::array<uint16_t, 4>{3, 4, 0, 2});
 
@@ -127,14 +127,14 @@ void animation_forever_scene(bn::sprite_text_generator& text_generator)
 
         if (bn::keypad::left_pressed())
         {
-            action = iso_bn::variable_wait_sprite_animate_action<4>::forever(
+            action = ibn::variable_wait_sprite_animate_action<4>::forever(
                 ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{8, 9, 10, 11},
                 bn::array<uint16_t, 4>{3, 4, 0, 2});
             update_action_info();
         }
         else if (bn::keypad::right_pressed())
         {
-            action = iso_bn::variable_wait_sprite_animate_action<4>::forever(
+            action = ibn::variable_wait_sprite_animate_action<4>::forever(
                 ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{12, 13, 14, 15},
                 bn::array<uint16_t, 4>{3, 4, 0, 2});
             update_action_info();
@@ -142,14 +142,14 @@ void animation_forever_scene(bn::sprite_text_generator& text_generator)
 
         if (bn::keypad::up_pressed())
         {
-            action = iso_bn::variable_wait_sprite_animate_action<4>::forever(
+            action = ibn::variable_wait_sprite_animate_action<4>::forever(
                 ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{4, 5, 6, 7},
                 bn::array<uint16_t, 4>{3, 4, 0, 2});
             update_action_info();
         }
         else if (bn::keypad::down_pressed())
         {
-            action = iso_bn::variable_wait_sprite_animate_action<4>::forever(
+            action = ibn::variable_wait_sprite_animate_action<4>::forever(
                 ninja_sprite, bn::sprite_items::ninja.tiles_item(), bn::array<uint16_t, 4>{0, 1, 2, 3},
                 bn::array<uint16_t, 4>{3, 4, 0, 2});
             update_action_info();
@@ -173,7 +173,7 @@ void palette_swap_action_scene(bn::sprite_text_generator& text_generator)
     const bn::sprite_palette_item& alt_palette_item = bn::sprite_palette_items::cavegirl_alt;
     bn::sprite_palette_ptr cavegirl_palette = cavegirl_sprite.palette();
 
-    iso_bn::sprite_palette_swap_toggle_action action(cavegirl_palette, palette_item, alt_palette_item, 60);
+    ibn::sprite_palette_swap_toggle_action action(cavegirl_palette, palette_item, alt_palette_item, 60);
 
     while (!bn::keypad::start_pressed())
     {

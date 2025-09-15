@@ -1,0 +1,7 @@
+# Normalize EOL for all files that Git considers text files.
+* text=auto eol=lf
+
+# vendors
+include/ibn_crc32.h linguist-vendored
+include/ibn_delegate.h linguist-vendored
+src/ibn_crc32.cpp linguist-vendored

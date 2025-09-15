@@ -1,13 +1,25 @@
 
-# vscode
-.vscode/*
-!.vscode/launch.json
-!.vscode/tasks.json
+# editors
+.vscode/
+.qtc_clangd/
+
+# python
+.venv/
+__pycache__/
 
 # build output 
-build/
+build*/
 *.elf
 *.gba
 
 # save file for testing
 *.sav
+
+# misc (derived from butano)
+*.creator
+*.user
+*.files
+*.includes
+*.config
+*.cflags
+*.cxxflags

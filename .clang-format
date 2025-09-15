@@ -6,4 +6,8 @@ Language: Cpp
 DerivePointerAlignment: false
 PointerAlignment: Left
 AccessModifierOffset: -4
+AlignEscapedNewlines: DontAlign
+AlwaysBreakTemplateDeclarations: Yes
+IndentRequires: true
+IndentExternBlock: NoIndent
 ---

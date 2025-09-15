@@ -1,23 +1,19 @@
-# iso_butano
+# iso-butano
 
-iso_butano is collections of helpers I wrote for the [Butano Engine](https://github.com/GValiente/butano).
+iso-butano is my reusable helpers for the [Butano Engine](https://github.com/GValiente/butano).
 
-## Included items
+## Licenses
 
-### 1. `iso_bn::variable_wait_sprite_animate_action<MaxSize>` class
+### Source codes
 
-This is a wrapper that adds variable `wait_updates` to the `bn::sprite_animate_action<MaxSize>`.
+There are 2 kinds of sources in this project:
+1. Copy-pasted (and possibly modified) from other project.
+1. My own code.
 
-### 2. `iso_bn::random` class
+Thus, you need to look at each source files' heading to figure out its licensing term.
 
-This adds getters & setters for the internal seeds in `bn::random`.
+See [licenses](licenses/) for all the source code license files.
 
-### 3. `iso_bn::sprite_palette_swap_toggle_action` class
-
-This is a palette swap toggle action, inspired by `bn::sprite_palette_inverted_toggle_action`.
-
-## License
-
-Source code's license is same as [Butano Engine](https://github.com/GValiente/butano), as this is a *derivative work* for the Butano.
+### Assets
 
 Graphics can be downloaded from [here](http://sparklinlabs.itch.io/superpowers), and are licensed under the [CC0 license](https://creativecommons.org/publicdomain/zero/1.0/).

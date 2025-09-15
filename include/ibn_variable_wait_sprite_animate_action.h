@@ -1,21 +1,22 @@
 /*
- * Copyright (c) 2020-2022 Gustavo Valiente gustavo.valiente@protonmail.com
- * zlib License, see LICENSE file.
+ * Copyright (c) 2020-2025 Gustavo Valiente gustavo.valiente@protonmail.com
+ * zlib License, see `licenses/butano.txt` file.
  *
  * 2023-03-24: Modified by copyrat90
- *   + `iso_bn::variable_wait_sprite_animate_action` is an ALTERED version of `bn::sprite_animate_actions`,
+ *   + `ibn::variable_wait_sprite_animate_action` is an ALTERED version of `bn::sprite_animate_actions`,
  *     which adds variable `wait_updates`.
  */
 
-#ifndef ISO_BN_VARIABLE_WAIT_SPRITE_ANIMATE_ACTION_H
-#define ISO_BN_VARIABLE_WAIT_SPRITE_ANIMATE_ACTION_H
+#ifndef IBN_VARIABLE_WAIT_SPRITE_ANIMATE_ACTION_H
+#define IBN_VARIABLE_WAIT_SPRITE_ANIMATE_ACTION_H
 
-#include "bn_sprite_animate_actions.h"
+#include <bn_sprite_animate_actions.h>
 
-namespace iso_bn
+namespace ibn
 {
 
-template <int MaxSize> class variable_wait_sprite_animate_action
+template <int MaxSize>
+class variable_wait_sprite_animate_action
 {
     static_assert(MaxSize > 1);
 
@@ -229,6 +230,6 @@ private:
     }
 };
 
-} // namespace iso_bn
+} // namespace ibn
 
 #endif

@@ -1,7 +1,0 @@
--xc++
--std=c++20
--I../../butano/include
--Icommon/include
-
--Iinclude/
--Ibuild/
