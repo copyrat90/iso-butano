@@ -70,7 +70,11 @@ void sprite_text_typewriter::update()
 {
     BN_ASSERT(!done(), "Typewritting is done");
 
-    _skip_requested |= bn::keypad::pressed(_skip_key);
+    if (!_skip_requested && bn::keypad::pressed(_skip_key))
+    {
+        _skip_requested = true;
+        _might_half_baked = true;
+    }
 
     if (_paused_manual)
     {
@@ -145,12 +149,15 @@ void sprite_text_typewriter::update()
             const bool line_overflow = _current_line_width - _current_chunk_width + new_chunk_width > _max_line_width;
             if (chunk_overflow || word_wrap || line_overflow)
             {
-                // New temporary chunk string
-                flag_new_sprite_required();
+                // Remove incorrectly added char
+                _text_chunk.shrink(_text_chunk.size() - ch.size());
 
                 // New line
                 if (word_wrap || line_overflow)
                     move_to_newline();
+                // New temporary chunk string
+                else
+                    flag_new_sprite_required();
 
                 // Re-add new char to new chunk
                 _text_chunk.append(_text.substr(_text_char_index, ch.size()));
@@ -160,7 +167,7 @@ void sprite_text_typewriter::update()
             const int prev_line_width = _current_line_width;
 
             // Remove the current chunk if not new
-            if (!new_sprite_required())
+            if (!_skip_requested && !new_sprite_required())
             {
                 _output_sprites->pop_back();
             }
@@ -183,35 +190,10 @@ void sprite_text_typewriter::update()
             }
 
             // Render the new chunk
-            auto& gen = const_cast<bn::sprite_text_generator&>(_text_generator);
-            const auto prev_align = gen.alignment();
-            const auto prev_palette = gen.palette_item();
-            gen.set_palette_item(*_palettes[_palette_index]);
-            switch (_alignment)
-            {
-            case alignment_type::LEFT: {
-                gen.set_alignment(alignment_type::LEFT);
-                gen.generate_top_left(next_character_position(), _text_chunk, *_output_sprites);
-                break;
-            }
-            case alignment_type::CENTER: {
-                gen.set_alignment(alignment_type::LEFT);
-                const bn::fixed next_line_width = _current_line_width + new_chunk_width;
-                gen.generate_top_left(_init_position.x() + next_line_width / 2 - new_chunk_width, _current_line_y,
-                                      _text_chunk, *_output_sprites);
-                break;
-            }
-            case alignment_type::RIGHT: {
-                gen.set_alignment(alignment_type::LEFT);
-                gen.generate_top_left(_init_position.x() - new_chunk_width, _current_line_y, _text_chunk,
-                                      *_output_sprites);
-                break;
-            }
-            default:
-                BN_ERROR("Invalid text alignment: ", (int)_alignment);
-            }
-            gen.set_alignment(prev_align);
-            gen.set_palette_item(prev_palette);
+            if (!_skip_requested)
+                render_chunk(_current_line_width, new_chunk_width);
+            else
+                _half_baked = _might_half_baked;
 
             _current_line_width += new_chunk_width;
             _current_chunk_width = new_chunk_width;
@@ -226,6 +208,12 @@ void sprite_text_typewriter::update()
         _text_char_index += ch.size();
         if (!_skip_requested && break_loop)
             break;
+    }
+
+    // Final flushing when skipping
+    if (done() && _skip_requested)
+    {
+        flag_new_sprite_required();
     }
 
     if (non_whitespace_rendered)
@@ -285,6 +273,8 @@ void sprite_text_typewriter::start(const bn::fixed_point& top_left_position, con
 
     _prev_whitespace = true;
     _skip_requested = false;
+    _half_baked = false;
+    _might_half_baked = false;
     _paused_manual = false;
     _paused_remaining_delay = 0;
     _current_line_y = _init_position.y();
@@ -340,19 +330,31 @@ bool sprite_text_typewriter::new_sprite_required() const
 
 void sprite_text_typewriter::flag_new_sprite_required()
 {
+    if (_half_baked)
+    {
+        if (!new_sprite_required())
+            _output_sprites->pop_back();
+        render_chunk(_current_line_width - _current_chunk_width, _current_chunk_width);
+    }
+    else if (!_might_half_baked && _skip_requested)
+        render_chunk(_current_line_width - _current_chunk_width, _current_chunk_width);
+
     _sprite_index = _output_sprites->size();
 
     _text_chunk.clear();
     _current_chunk_width = 0;
+
+    _half_baked = false;
+    _might_half_baked = false;
 }
 
 void sprite_text_typewriter::move_to_newline()
 {
+    flag_new_sprite_required();
+
     _current_line_y += _line_spacing;
 
     _current_line_width = 0;
-
-    flag_new_sprite_required();
 
     _line_first_sprite_index = _sprite_index;
 }
@@ -362,8 +364,8 @@ void sprite_text_typewriter::change_palette_index(int palette_index)
     if (palette_index == _palette_index)
         return;
 
-    _palette_index = palette_index;
     flag_new_sprite_required();
+    _palette_index = palette_index;
 }
 
 bool sprite_text_typewriter::check_word_wrap() const
@@ -394,6 +396,39 @@ bool sprite_text_typewriter::check_word_wrap() const
 
     // Determine the word wrap
     return word_width <= _max_line_width && _current_line_width + word_width > _max_line_width;
+}
+
+void sprite_text_typewriter::render_chunk(int current_line_width, int new_chunk_width)
+{
+    auto& gen = const_cast<bn::sprite_text_generator&>(_text_generator);
+    const auto prev_align = gen.alignment();
+    const auto prev_palette = gen.palette_item();
+    gen.set_palette_item(*_palettes[_palette_index]);
+    switch (_alignment)
+    {
+        using alignment_type = bn::sprite_text_generator::alignment_type;
+    case alignment_type::LEFT: {
+        gen.set_alignment(alignment_type::LEFT);
+        gen.generate_top_left(_init_position.x() + current_line_width, _current_line_y, _text_chunk, *_output_sprites);
+        break;
+    }
+    case alignment_type::CENTER: {
+        gen.set_alignment(alignment_type::LEFT);
+        const bn::fixed next_line_width = current_line_width + new_chunk_width;
+        gen.generate_top_left(_init_position.x() + next_line_width / 2 - new_chunk_width, _current_line_y, _text_chunk,
+                              *_output_sprites);
+        break;
+    }
+    case alignment_type::RIGHT: {
+        gen.set_alignment(alignment_type::LEFT);
+        gen.generate_top_left(_init_position.x() - new_chunk_width, _current_line_y, _text_chunk, *_output_sprites);
+        break;
+    }
+    default:
+        BN_ERROR("Invalid text alignment: ", (int)_alignment);
+    }
+    gen.set_alignment(prev_align);
+    gen.set_palette_item(prev_palette);
 }
 
 } // namespace ibn

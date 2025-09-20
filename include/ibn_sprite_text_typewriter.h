@@ -119,6 +119,8 @@ private:
 
     bool check_word_wrap() const;
 
+    void render_chunk(int current_line_width, int new_chunk_width);
+
 private:
     const bn::sprite_text_generator& _text_generator;
     const int _max_chunk_width;
@@ -138,6 +140,8 @@ private:
 
     bool _prev_whitespace = true;
     bool _skip_requested = false;
+    bool _half_baked = false;
+    bool _might_half_baked = false;
     bool _paused_manual = false;
     int _paused_remaining_delay = 0;
     bn::fixed _current_line_y = 0;
