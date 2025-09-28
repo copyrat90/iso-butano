@@ -34,7 +34,7 @@ concept sram_save_data =
 class sram_rw final
 {
 private:
-    static constexpr unsigned SRAM_SIZE = 32 * 1024;
+    static constexpr unsigned SRAM_SIZE = bn::sram::size();
 
     static constexpr unsigned MAGIC_LEN = 5;
     static constexpr unsigned DEFAULT_ALLOCA_SIZE = 256;
