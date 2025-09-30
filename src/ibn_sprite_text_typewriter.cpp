@@ -5,7 +5,7 @@
 #include <bn_sound_item.h>
 #include <bn_utf8_character.h>
 
-#include <algorithm>
+#include <new>
 
 namespace ibn
 {
@@ -59,171 +59,27 @@ sprite_text_typewriter::sprite_text_typewriter(const bn::sprite_text_generator& 
                                                const bn::span<const bn::sprite_palette_item* const>& palettes)
     : _text_generator(text_generator),
       _max_chunk_width(text_generator.font().item().shape_size().height() >= 32 ? 64 : 32),
-      _palettes(init_palettes(text_generator, palettes)), _resume_key(resume_key), _skip_key(skip_key)
+      _palettes(init_palettes(text_generator, palettes)), _resume_key(resume_key), _skip_key(skip_key),
+      _state(create_state<done_state>()), _next_state(nullptr, state_deleter(_state_pool))
 {
     BN_ASSERT(!text_generator.one_sprite_per_character(), "DO NOT set `one_sprite_per_character`!");
     BN_ASSERT((static_cast<std::uint16_t>(resume_key) & static_cast<std::uint16_t>(skip_key)) == 0,
               "Resume & skip keys shouldn't overlap");
+
+    _state->enter(*this);
 }
 
 void sprite_text_typewriter::update()
 {
     BN_ASSERT(!done(), "Typewritting is done");
 
-    if (!_skip_requested && bn::keypad::pressed(_skip_key))
-    {
-        _skip_requested = true;
-        _might_half_baked = true;
-    }
+    // User requested state change
+    apply_reserved_state_change();
 
-    if (_paused_manual)
-    {
-        if (_skip_requested || bn::keypad::pressed(_resume_key))
-            _paused_manual = false;
-        else
-            return;
-    }
+    _state->update(*this);
 
-    if (!_skip_requested && ++_current_updates != _wait_updates)
-        return;
-    _current_updates = 0;
-
-    if (!_skip_requested && _paused_remaining_delay != 0)
-    {
-        if (--_paused_remaining_delay != 0)
-            return;
-    }
-    _paused_remaining_delay = 0;
-
-    bool non_whitespace_rendered = false;
-    while (!done())
-    {
-        const bn::utf8_character ch(_text[_text_char_index]);
-        bool break_loop = false;
-
-        if (ch.data() == CH_NEWLINE.data())
-        {
-            move_to_newline();
-        }
-        else if (ch.data() == CH_PAUSE_MANUAL.data())
-        {
-            if (!_skip_requested)
-            {
-                _paused_manual = true;
-                break_loop = true;
-            }
-        }
-        else if (CH_PAUSE_1.data() <= ch.data() && ch.data() <= CH_PAUSE_1.data() + 9)
-        {
-            if (!_skip_requested)
-            {
-                _paused_remaining_delay = ch.data() - CH_PAUSE_1.data() + 1;
-                break_loop = true;
-            }
-        }
-        else if (ch.data() == CH_PAL_A_0.data() ||
-                 (CH_PAL_A_1.data() <= ch.data() && ch.data() <= CH_PAL_A_1.data() + 9))
-        {
-            const int pal_idx = (ch.data() == CH_PAL_A_0.data()) ? 0 : ch.data() - CH_PAL_A_1.data() + 1;
-
-            change_palette_index(pal_idx);
-        }
-        else if (ch.data() == CH_PAL_B_0.data() ||
-                 (CH_PAL_B_1.data() <= ch.data() && ch.data() <= CH_PAL_B_1.data() + 9))
-        {
-            const int pal_idx = (ch.data() == CH_PAL_B_0.data()) ? 0 : ch.data() - CH_PAL_B_1.data() + 1;
-
-            change_palette_index(pal_idx);
-        }
-        else // Rendered text character
-        {
-            // Check for word-wrap
-            const bool word_wrap = check_word_wrap();
-
-            // Add new char to chunk
-            _text_chunk.append(_text.substr(_text_char_index, ch.size()));
-            int new_chunk_width = _text_generator.width(_text_chunk);
-
-            // Check if adding new char would result in width overflow
-            const bool chunk_overflow = new_chunk_width > _max_chunk_width;
-            const bool line_overflow = _current_line_width - _current_chunk_width + new_chunk_width > _max_line_width;
-            if (chunk_overflow || word_wrap || line_overflow)
-            {
-                // Remove incorrectly added char
-                _text_chunk.shrink(_text_chunk.size() - ch.size());
-
-                // New line
-                if (word_wrap || line_overflow)
-                    move_to_newline();
-                // New temporary chunk string
-                else
-                    flag_new_sprite_required();
-
-                // Re-add new char to new chunk
-                _text_chunk.append(_text.substr(_text_char_index, ch.size()));
-                new_chunk_width = _text_generator.width(_text_chunk);
-            }
-
-            const int prev_line_width = _current_line_width;
-
-            // Remove the current chunk if not new
-            if (!_skip_requested && !new_sprite_required())
-            {
-                _output_sprites->pop_back();
-            }
-
-            _current_line_width -= _current_chunk_width;
-
-            // Adjust the positions of existing sprites in line
-            using alignment_type = bn::sprite_text_generator::alignment_type;
-            if (_alignment != alignment_type::LEFT)
-            {
-                bn::fixed diff = prev_line_width - (_current_line_width + new_chunk_width);
-                if (_alignment == alignment_type::CENTER)
-                    diff /= 2;
-
-                for (int idx = _line_first_sprite_index; idx < _sprite_index; ++idx)
-                {
-                    auto& spr = (*_output_sprites)[idx];
-                    spr.set_x(spr.x() + diff);
-                }
-            }
-
-            // Render the new chunk
-            if (!_skip_requested)
-                render_chunk(_current_line_width, new_chunk_width);
-            else
-                _half_baked = _might_half_baked;
-
-            _current_line_width += new_chunk_width;
-            _current_chunk_width = new_chunk_width;
-
-            _prev_whitespace = is_whitespace(ch);
-            if (!_prev_whitespace)
-                non_whitespace_rendered = true;
-
-            break_loop = true;
-        }
-
-        _text_char_index += ch.size();
-        if (!_skip_requested && break_loop)
-            break;
-    }
-
-    // Final flushing when skipping
-    if (done() && _skip_requested)
-    {
-        flag_new_sprite_required();
-    }
-
-    if (non_whitespace_rendered)
-    {
-        if (_write_sound != nullptr)
-        {
-            stop_write_sound();
-            _write_sound_handle = _write_sound->play();
-        }
-    }
+    // State requested state change
+    apply_reserved_state_change();
 }
 
 bool sprite_text_typewriter::paused() const
@@ -231,14 +87,32 @@ bool sprite_text_typewriter::paused() const
     return _paused_manual;
 }
 
+void sprite_text_typewriter::pause()
+{
+    if (!done())
+    {
+        _paused_manual = true;
+        reserve_next_state<manual_pause_state>();
+    }
+}
+
+void sprite_text_typewriter::resume()
+{
+    BN_ASSERT(paused(), "typewriter is not paused");
+
+    _paused_manual = false;
+    reserve_next_state<type_state>();
+}
+
 bool sprite_text_typewriter::done() const
 {
     return _text_char_index == _text.size();
 }
 
-bool sprite_text_typewriter::skipped() const
+void sprite_text_typewriter::skip()
 {
-    return _skip_requested;
+    if (!done())
+        reserve_next_state<skip_state>();
 }
 
 auto sprite_text_typewriter::next_character_position() const -> bn::fixed_point
@@ -257,9 +131,11 @@ auto sprite_text_typewriter::next_character_position() const -> bn::fixed_point
 
 void sprite_text_typewriter::start(const bn::fixed_point& top_left_position, const bn::string_view& text,
                                    bn::ivector<bn::sprite_ptr>& output_sprites, int wait_updates,
-                                   const bn::sound_item* write_sound, int line_width, bn::fixed line_spacing)
+                                   const bn::sound_item* write_sound, int line_width, bn::fixed line_spacing,
+                                   int max_lines)
 {
     BN_ASSERT(wait_updates > 0, "Invalid wait updates: ", wait_updates);
+    BN_ASSERT(max_lines > 0, "Invalid max lines: ", max_lines);
 
     _init_position = top_left_position;
     _text = text;
@@ -269,24 +145,23 @@ void sprite_text_typewriter::start(const bn::fixed_point& top_left_position, con
     _write_sound = write_sound;
     _max_line_width = line_width;
     _line_spacing = line_spacing;
+    _max_lines = max_lines;
     _alignment = _text_generator.alignment();
 
     _prev_whitespace = true;
-    _skip_requested = false;
-    _half_baked = false;
-    _might_half_baked = false;
     _paused_manual = false;
-    _paused_remaining_delay = 0;
     _current_line_y = _init_position.y();
     _palette_index = 0;
-    _current_updates = 0;
     stop_write_sound();
     _current_line_width = 0;
     _current_chunk_width = 0;
+    _current_line = 0;
     _text_char_index = 0;
     _text_chunk.clear();
     _line_first_sprite_index = _init_sprite_index;
     _sprite_index = _init_sprite_index;
+
+    reserve_next_state<type_state>();
 }
 
 auto sprite_text_typewriter::resume_key() const -> bn::keypad::key_type
@@ -328,44 +203,23 @@ bool sprite_text_typewriter::new_sprite_required() const
     return _sprite_index == _output_sprites->size();
 }
 
-void sprite_text_typewriter::flag_new_sprite_required()
+bool sprite_text_typewriter::max_lines_overflow() const
 {
-    if (_half_baked)
-    {
-        if (!new_sprite_required())
-            _output_sprites->pop_back();
-        render_chunk(_current_line_width - _current_chunk_width, _current_chunk_width);
-    }
-    else if (!_might_half_baked && _skip_requested)
-        render_chunk(_current_line_width - _current_chunk_width, _current_chunk_width);
-
-    _sprite_index = _output_sprites->size();
-
-    _text_chunk.clear();
-    _current_chunk_width = 0;
-
-    _half_baked = false;
-    _might_half_baked = false;
+    return _current_line >= _max_lines;
 }
 
-void sprite_text_typewriter::move_to_newline()
+void sprite_text_typewriter::wipe_and_reset_pos()
 {
-    flag_new_sprite_required();
+    while (_output_sprites->size() > _init_sprite_index)
+        _output_sprites->pop_back();
 
-    _current_line_y += _line_spacing;
-
+    _current_line_y = _init_position.y();
     _current_line_width = 0;
+    _line_first_sprite_index = _init_sprite_index;
 
-    _line_first_sprite_index = _sprite_index;
-}
+    _sprite_index = _init_sprite_index;
 
-void sprite_text_typewriter::change_palette_index(int palette_index)
-{
-    if (palette_index == _palette_index)
-        return;
-
-    flag_new_sprite_required();
-    _palette_index = palette_index;
+    _current_line = 0;
 }
 
 bool sprite_text_typewriter::check_word_wrap() const
@@ -429,6 +283,424 @@ void sprite_text_typewriter::render_chunk(int current_line_width, int new_chunk_
     }
     gen.set_alignment(prev_align);
     gen.set_palette_item(prev_palette);
+}
+
+bool sprite_text_typewriter::state::skip_if_key_pressed(sprite_text_typewriter& writer)
+{
+    if (bn::keypad::pressed(writer._skip_key))
+    {
+        writer.skip();
+        return true;
+    }
+
+    return false;
+}
+
+void sprite_text_typewriter::type_state::update(sprite_text_typewriter& writer)
+{
+    if (skip_if_key_pressed(writer))
+        return;
+
+    if (++_current_updates != writer._wait_updates)
+        return;
+    _current_updates = 0;
+
+    if (_timed_pause_remaining != 0)
+    {
+        if (--_timed_pause_remaining != 0)
+            return;
+    }
+
+    bool non_whitespace_rendered = false;
+    while (!writer.done())
+    {
+        const bn::utf8_character ch(writer._text[writer._text_char_index]);
+        bool break_loop = false;
+
+        if (ch.data() == CH_NEWLINE.data())
+        {
+            move_to_newline(writer);
+            if (writer.max_lines_overflow())
+            {
+                writer.pause();
+                break_loop = true;
+            }
+        }
+        else if (ch.data() == CH_PAUSE_MANUAL.data())
+        {
+            writer.pause();
+            break_loop = true;
+        }
+        else if (CH_PAUSE_1.data() <= ch.data() && ch.data() <= CH_PAUSE_1.data() + 9)
+        {
+            _timed_pause_remaining = ch.data() - CH_PAUSE_1.data() + 1;
+            break_loop = true;
+        }
+        else if (ch.data() == CH_PAL_A_0.data() ||
+                 (CH_PAL_A_1.data() <= ch.data() && ch.data() <= CH_PAL_A_1.data() + 9))
+        {
+            const int pal_idx = (ch.data() == CH_PAL_A_0.data()) ? 0 : ch.data() - CH_PAL_A_1.data() + 1;
+            change_palette_index(pal_idx, writer);
+        }
+        else if (ch.data() == CH_PAL_B_0.data() ||
+                 (CH_PAL_B_1.data() <= ch.data() && ch.data() <= CH_PAL_B_1.data() + 9))
+        {
+            const int pal_idx = (ch.data() == CH_PAL_B_0.data()) ? 0 : ch.data() - CH_PAL_B_1.data() + 1;
+            change_palette_index(pal_idx, writer);
+        }
+        else // Rendered text character
+        {
+            // Check for word-wrap
+            const bool word_wrap = writer.check_word_wrap();
+
+            // Add new char to chunk
+            writer._text_chunk.append(writer._text.substr(writer._text_char_index, ch.size()));
+            int new_chunk_width = writer._text_generator.width(writer._text_chunk);
+
+            // Check if adding new char would result in width overflow
+            const bool chunk_overflow = new_chunk_width > writer._max_chunk_width;
+            const bool line_overflow =
+                writer._current_line_width - writer._current_chunk_width + new_chunk_width > writer._max_line_width;
+            if (chunk_overflow || word_wrap || line_overflow)
+            {
+                // Remove incorrectly added char
+                writer._text_chunk.shrink(writer._text_chunk.size() - ch.size());
+
+                // New line
+                if (word_wrap || line_overflow)
+                {
+                    move_to_newline(writer);
+                    if (writer.max_lines_overflow())
+                    {
+                        writer.pause();
+                        // This character should be re-parsed after pausing, so force-break
+                        break;
+                    }
+                }
+                // New temporary chunk string
+                else
+                    flag_new_sprite_required(writer);
+
+                // Re-add new char to new chunk
+                writer._text_chunk.append(writer._text.substr(writer._text_char_index, ch.size()));
+                new_chunk_width = writer._text_generator.width(writer._text_chunk);
+            }
+
+            const int prev_line_width = writer._current_line_width;
+
+            // Remove the current chunk if not new
+            if (!writer.new_sprite_required())
+            {
+                writer._output_sprites->pop_back();
+            }
+
+            writer._current_line_width -= writer._current_chunk_width;
+
+            // Adjust the positions of existing sprites in line
+            using alignment_type = bn::sprite_text_generator::alignment_type;
+            if (writer._alignment != alignment_type::LEFT)
+            {
+                bn::fixed diff = prev_line_width - (writer._current_line_width + new_chunk_width);
+                if (writer._alignment == alignment_type::CENTER)
+                    diff /= 2;
+
+                for (int idx = writer._line_first_sprite_index; idx < writer._sprite_index; ++idx)
+                {
+                    auto& spr = (*writer._output_sprites)[idx];
+                    spr.set_x(spr.x() + diff);
+                }
+            }
+
+            // Render the new chunk
+            writer.render_chunk(writer._current_line_width, new_chunk_width);
+
+            writer._current_line_width += new_chunk_width;
+            writer._current_chunk_width = new_chunk_width;
+
+            writer._prev_whitespace = is_whitespace(ch);
+            if (!writer._prev_whitespace)
+                non_whitespace_rendered = true;
+
+            break_loop = true;
+        }
+
+        writer._text_char_index += ch.size();
+        if (break_loop)
+            break;
+    }
+
+    if (non_whitespace_rendered)
+    {
+        if (writer._write_sound != nullptr)
+        {
+            writer.stop_write_sound();
+            writer._write_sound_handle = writer._write_sound->play();
+        }
+    }
+
+    if (writer.done())
+        writer.reserve_next_state<done_state>();
+}
+
+void sprite_text_typewriter::type_state::flag_new_sprite_required(sprite_text_typewriter& writer)
+{
+    writer._sprite_index = writer._output_sprites->size();
+
+    writer._text_chunk.clear();
+    writer._current_chunk_width = 0;
+}
+
+void sprite_text_typewriter::type_state::move_to_newline(sprite_text_typewriter& writer)
+{
+    flag_new_sprite_required(writer);
+
+    ++writer._current_line;
+    // When lines overflow, don't adjust positions
+    if (writer.max_lines_overflow())
+        return;
+
+    writer._current_line_y += writer._line_spacing;
+
+    writer._current_line_width = 0;
+
+    writer._line_first_sprite_index = writer._sprite_index;
+}
+
+void sprite_text_typewriter::type_state::change_palette_index(int palette_index, sprite_text_typewriter& writer)
+{
+    if (palette_index == writer._palette_index)
+        return;
+
+    flag_new_sprite_required(writer);
+    writer._palette_index = palette_index;
+}
+
+void sprite_text_typewriter::manual_pause_state::enter(sprite_text_typewriter& writer)
+{
+    writer._paused_manual = true;
+}
+
+void sprite_text_typewriter::manual_pause_state::exit(sprite_text_typewriter& writer)
+{
+    writer._paused_manual = false;
+
+    if (writer.max_lines_overflow())
+        writer.wipe_and_reset_pos();
+}
+
+void sprite_text_typewriter::manual_pause_state::update(sprite_text_typewriter& writer)
+{
+    if (skip_if_key_pressed(writer))
+        return;
+
+    resume_if_key_pressed(writer);
+}
+
+bool sprite_text_typewriter::manual_pause_state::resume_if_key_pressed(sprite_text_typewriter& writer)
+{
+    if (bn::keypad::pressed(writer._resume_key))
+    {
+        writer.resume();
+        return true;
+    }
+
+    return false;
+}
+
+void sprite_text_typewriter::skip_state::exit(sprite_text_typewriter& writer)
+{
+    // Final flushing when skipping
+    flag_new_sprite_required(writer);
+}
+
+void sprite_text_typewriter::skip_state::update(sprite_text_typewriter& writer)
+{
+    bool non_whitespace_rendered = false;
+    while (!writer.done())
+    {
+        const bn::utf8_character ch(writer._text[writer._text_char_index]);
+        bool break_loop = false;
+
+        if (ch.data() == CH_NEWLINE.data())
+        {
+            move_to_newline(writer);
+            if (writer.max_lines_overflow())
+            {
+                writer.pause();
+                break_loop = true;
+            }
+        }
+        else if (ch.data() == CH_PAUSE_MANUAL.data())
+        {
+            // Ignore manual pause command in skip
+        }
+        else if (CH_PAUSE_1.data() <= ch.data() && ch.data() <= CH_PAUSE_1.data() + 9)
+        {
+            // Ignore timed pause commands in skip
+        }
+        else if (ch.data() == CH_PAL_A_0.data() ||
+                 (CH_PAL_A_1.data() <= ch.data() && ch.data() <= CH_PAL_A_1.data() + 9))
+        {
+            const int pal_idx = (ch.data() == CH_PAL_A_0.data()) ? 0 : ch.data() - CH_PAL_A_1.data() + 1;
+            change_palette_index(pal_idx, writer);
+        }
+        else if (ch.data() == CH_PAL_B_0.data() ||
+                 (CH_PAL_B_1.data() <= ch.data() && ch.data() <= CH_PAL_B_1.data() + 9))
+        {
+            const int pal_idx = (ch.data() == CH_PAL_B_0.data()) ? 0 : ch.data() - CH_PAL_B_1.data() + 1;
+            change_palette_index(pal_idx, writer);
+        }
+        else // Rendered text character
+        {
+            // Check for word-wrap
+            const bool word_wrap = writer.check_word_wrap();
+
+            // Add new char to chunk
+            writer._text_chunk.append(writer._text.substr(writer._text_char_index, ch.size()));
+            int new_chunk_width = writer._text_generator.width(writer._text_chunk);
+
+            // Check if adding new char would result in width overflow
+            const bool chunk_overflow = new_chunk_width > writer._max_chunk_width;
+            const bool line_overflow =
+                writer._current_line_width - writer._current_chunk_width + new_chunk_width > writer._max_line_width;
+            if (chunk_overflow || word_wrap || line_overflow)
+            {
+                // Remove incorrectly added char
+                writer._text_chunk.shrink(writer._text_chunk.size() - ch.size());
+
+                // New line
+                if (word_wrap || line_overflow)
+                {
+                    move_to_newline(writer);
+                    if (writer.max_lines_overflow())
+                    {
+                        writer.pause();
+                        // This character should be re-parsed after pausing, so force-break
+                        break;
+                    }
+                }
+                // New temporary chunk string
+                else
+                    flag_new_sprite_required(writer);
+
+                // Re-add new char to new chunk
+                writer._text_chunk.append(writer._text.substr(writer._text_char_index, ch.size()));
+                new_chunk_width = writer._text_generator.width(writer._text_chunk);
+            }
+
+            const int prev_line_width = writer._current_line_width;
+
+            writer._current_line_width -= writer._current_chunk_width;
+
+            // Adjust the positions of existing sprites in line
+            using alignment_type = bn::sprite_text_generator::alignment_type;
+            if (writer._alignment != alignment_type::LEFT)
+            {
+                bn::fixed diff = prev_line_width - (writer._current_line_width + new_chunk_width);
+                if (writer._alignment == alignment_type::CENTER)
+                    diff /= 2;
+
+                for (int idx = writer._line_first_sprite_index; idx < writer._sprite_index; ++idx)
+                {
+                    auto& spr = (*writer._output_sprites)[idx];
+                    spr.set_x(spr.x() + diff);
+                }
+            }
+
+            // Flag whether the last sprite's half baked
+            _half_baked = _might_half_baked;
+
+            writer._current_line_width += new_chunk_width;
+            writer._current_chunk_width = new_chunk_width;
+
+            writer._prev_whitespace = is_whitespace(ch);
+            if (!writer._prev_whitespace)
+                non_whitespace_rendered = true;
+        }
+
+        writer._text_char_index += ch.size();
+        if (break_loop)
+            break;
+    }
+
+    if (non_whitespace_rendered)
+    {
+        if (writer._write_sound != nullptr)
+        {
+            writer.stop_write_sound();
+            writer._write_sound_handle = writer._write_sound->play();
+        }
+    }
+
+    if (writer.done())
+        writer.reserve_next_state<done_state>();
+}
+
+void sprite_text_typewriter::skip_state::flag_new_sprite_required(sprite_text_typewriter& writer)
+{
+    if (_half_baked)
+    {
+        if (!writer.new_sprite_required())
+            writer._output_sprites->pop_back();
+    }
+
+    writer.render_chunk(writer._current_line_width - writer._current_chunk_width, writer._current_chunk_width);
+
+    writer._sprite_index = writer._output_sprites->size();
+
+    writer._text_chunk.clear();
+    writer._current_chunk_width = 0;
+
+    _half_baked = false;
+    _might_half_baked = false;
+}
+
+void sprite_text_typewriter::skip_state::move_to_newline(sprite_text_typewriter& writer)
+{
+    flag_new_sprite_required(writer);
+
+    ++writer._current_line;
+    // When lines overflow, don't adjust positions
+    if (writer.max_lines_overflow())
+        return;
+
+    writer._current_line_y += writer._line_spacing;
+
+    writer._current_line_width = 0;
+
+    writer._line_first_sprite_index = writer._sprite_index;
+}
+
+void sprite_text_typewriter::skip_state::change_palette_index(int palette_index, sprite_text_typewriter& writer)
+{
+    if (palette_index == writer._palette_index)
+        return;
+
+    flag_new_sprite_required(writer);
+    writer._palette_index = palette_index;
+}
+
+void sprite_text_typewriter::done_state::update(sprite_text_typewriter&)
+{
+}
+
+sprite_text_typewriter::state_deleter::state_deleter(state_pool_t& pool) : _pool(&pool)
+{
+}
+
+void sprite_text_typewriter::state_deleter::operator()(state* state) const
+{
+    _pool->destroy(*state);
+}
+
+void sprite_text_typewriter::apply_reserved_state_change()
+{
+    if (_next_state)
+    {
+        _state->exit(*this);
+        _state = std::move(_next_state);
+        _state->enter(*this);
+    }
 }
 
 } // namespace ibn

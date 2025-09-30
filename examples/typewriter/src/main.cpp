@@ -13,7 +13,7 @@
 #include <bn_sprite_text_generator.h>
 #include <bn_vector.h>
 
-#include "common_fixed_8x16_sprite_font.h"
+#include "common_variable_8x16_sprite_font.h"
 
 #include "bn_sound_items.h"
 #include "bn_sprite_items_cursor.h"
@@ -27,15 +27,35 @@ namespace
 constexpr auto RESUME_KEY = bn::keypad::key_type::A;
 constexpr auto SKIP_KEY = (bn::keypad::key_type)((int)bn::keypad::key_type::SELECT | (int)bn::keypad::key_type::B);
 
-constexpr bn::string_view STR = "* ➊Hello!⏯\n⓿* And.⓵.⓹.⓾ ❷good-bye!";
+constexpr bn::string_view STR = R"(* ➊Hello!⏯
+⓿* And.⓵.⓹.⓾ ❷good-bye!⓿
+the quick brown fox jumps over a lazy dog,
+THE QUICK BROWN FOX JUMPS OVER A LAZY DOG?
+zlib License
+Copyright 2021-2025 Guyeon Yu <copyrat90@gmail.com>
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.)";
+
 constexpr int WAIT_UPDATES = 3;
 constexpr int LINE_WIDTH = 220;
 constexpr bn::fixed LINE_SPACING = 12;
+constexpr int MAX_LINES = 4;
 
 constexpr bn::array<const bn::sprite_palette_item*, 3> PALETTES = {
-    &bn::sprite_items::common_fixed_8x16_font.palette_item(), // 🄌
-    &bn::sprite_palette_items::blue,                          // ➊
-    &bn::sprite_palette_items::red,                           // ➋
+    &bn::sprite_items::common_variable_8x16_font.palette_item(), // 🄌
+    &bn::sprite_palette_items::blue,                             // ➊
+    &bn::sprite_palette_items::red,                              // ➋
 };
 
 constexpr bn::fixed CENTER_X = bn::display::width() / 2;
@@ -65,6 +85,11 @@ int main()
         guideline_builder.set_top_left_position(RIGHT_X, y * guideline_builder.shape_size().height());
         guidelines.push_back(guideline_builder.build());
     }
+    for (int y=0;y<5;++y)
+    {
+        guideline_builder.set_top_left_position(CENTER_X, y * guideline_builder.shape_size().height());
+        guidelines.push_back(guideline_builder.build());
+    }
 
     // Show cursors
     bn::sprite_builder cursor_builder(bn::sprite_items::cursor);
@@ -77,7 +102,7 @@ int main()
     }
 
     // Create left, center, right typewriters
-    bn::sprite_text_generator text_generator(common::fixed_8x16_sprite_font);
+    bn::sprite_text_generator text_generator(common::variable_8x16_sprite_font);
     ibn::sprite_text_typewriter left_writer(text_generator, RESUME_KEY, SKIP_KEY,
                                             bn::span(PALETTES.cbegin(), PALETTES.cend()));
     ibn::sprite_text_typewriter center_writer(text_generator, RESUME_KEY, SKIP_KEY,
@@ -90,12 +115,14 @@ int main()
     // Start typewriters
     // (Initial alignment is stored and used throughout typewritting)
     text_generator.set_alignment(bn::sprite_text_generator::alignment_type::LEFT);
-    left_writer.start(LEFT_X, 0 * PARA_SPACING, STR, out_left, WAIT_UPDATES, nullptr, LINE_WIDTH, LINE_SPACING);
+    left_writer.start(LEFT_X, 0 * PARA_SPACING, STR, out_left, WAIT_UPDATES, nullptr, LINE_WIDTH, LINE_SPACING,
+                      MAX_LINES);
     text_generator.set_alignment(bn::sprite_text_generator::alignment_type::CENTER);
-    center_writer.start(CENTER_X, 1 * PARA_SPACING, STR, out_center, WAIT_UPDATES, nullptr, LINE_WIDTH, LINE_SPACING);
+    center_writer.start(CENTER_X, 1 * PARA_SPACING, STR, out_center, WAIT_UPDATES, nullptr, LINE_WIDTH, LINE_SPACING,
+                        MAX_LINES);
     text_generator.set_alignment(bn::sprite_text_generator::alignment_type::RIGHT);
     right_writer.start(RIGHT_X, 2 * PARA_SPACING, STR, out_right, WAIT_UPDATES, &bn::sound_items::type, LINE_WIDTH,
-                       LINE_SPACING);
+                       LINE_SPACING, MAX_LINES);
 
     while (true)
     {
