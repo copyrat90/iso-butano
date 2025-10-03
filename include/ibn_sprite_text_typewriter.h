@@ -13,13 +13,13 @@
 #include <bn_sprite_text_generator.h>
 #include <bn_string.h>
 #include <bn_string_view.h>
+#include <bn_unique_ptr.h>
 #include <bn_vector.h>
 
 #include <algorithm>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 
 namespace bn
 {
@@ -133,7 +133,7 @@ private:
     class state;
     class state_deleter;
 
-    using state_ptr = std::unique_ptr<state, state_deleter>;
+    using state_ptr = bn::unique_ptr<state, state_deleter>;
 
     class state
     {
