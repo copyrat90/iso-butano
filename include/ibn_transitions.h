@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2021-2025 Guyeon Yu <copyrat90@gmail.com>
+// SPDX-License-Identifier: Zlib
+
 #pragma once
 
 #include "ibn_enum_as_flags.h"
