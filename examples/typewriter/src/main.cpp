@@ -7,6 +7,7 @@
 #include <bn_core.h>
 #include <bn_display.h>
 #include <bn_keypad.h>
+#include <bn_log.h>
 #include <bn_sprite_actions.h>
 #include <bn_sprite_builder.h>
 #include <bn_sprite_ptr.h>
@@ -31,17 +32,17 @@ constexpr bn::string_view STR = R"(* ➊Hello!⏯
 ⓿* And.⓵.⓹.⓾ ❷good-bye!⓿
 the quick brown fox jumps over a lazy dog,
 THE QUICK BROWN FOX JUMPS OVER A LAZY DOG?
-zlib License
-Copyright 2021-2025 Guyeon Yu <copyrat90@gmail.com>
-This software is provided 'as-is', without any express or implied
-warranty.  In no event will the authors be held liable for any damages
-arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it
-freely, subject to the following restrictions:
-1. The origin of this software must not be misrepresented; you must not
-   claim that you wrote the original software. If you use this software
-   in a product, an acknowledgment in the product documentation would be
+zlib License⓪
+Copyright 2021-2025 Guyeon Yu <copyrat90@gmail.com>➀
+This software is provided 'as-is', without any express or implied②
+warranty.  In no event will the authors be held liable for any damages➂
+arising from the use of this software.④
+Permission is granted to anyone to use this software for any purpose,⑤
+including commercial applications, and to alter it and redistribute it➅
+freely, subject to the following restrictions:⑦
+1. The origin of this software must not be misrepresented; you must not➇
+   claim that you wrote the original software. If you use this software⑨
+   in a product, an acknowledgment in the product documentation would be➉
    appreciated but is not required.
 2. Altered source versions must be plainly marked as such, and must not be
    misrepresented as being the original software.
@@ -66,6 +67,17 @@ constexpr bn::fixed PARA_SPACING = 55;
 
 using out_vec_t = bn::vector<bn::sprite_ptr, 32>;
 
+void custom_delegate_callback(int dele_idx)
+{
+    BN_LOG("custom_delegate_callback(", dele_idx, ")");
+}
+
+constexpr bn::array<const ibn::delegate<void(int)>, 11> DELEGATES = {
+    custom_delegate_callback, custom_delegate_callback, custom_delegate_callback, custom_delegate_callback,
+    custom_delegate_callback, custom_delegate_callback, custom_delegate_callback, custom_delegate_callback,
+    custom_delegate_callback, custom_delegate_callback, custom_delegate_callback,
+};
+
 } // namespace
 
 int main()
@@ -85,7 +97,7 @@ int main()
         guideline_builder.set_top_left_position(RIGHT_X, y * guideline_builder.shape_size().height());
         guidelines.push_back(guideline_builder.build());
     }
-    for (int y=0;y<5;++y)
+    for (int y = 0; y < 5; ++y)
     {
         guideline_builder.set_top_left_position(CENTER_X, y * guideline_builder.shape_size().height());
         guidelines.push_back(guideline_builder.build());
@@ -104,11 +116,14 @@ int main()
     // Create left, center, right typewriters
     bn::sprite_text_generator text_generator(common::variable_8x16_sprite_font);
     ibn::sprite_text_typewriter left_writer(text_generator, RESUME_KEY, SKIP_KEY,
-                                            bn::span(PALETTES.cbegin(), PALETTES.cend()));
+                                            bn::span(PALETTES.cbegin(), PALETTES.cend()),
+                                            bn::span(DELEGATES.cbegin(), DELEGATES.cend()));
     ibn::sprite_text_typewriter center_writer(text_generator, RESUME_KEY, SKIP_KEY,
-                                              bn::span(PALETTES.cbegin(), PALETTES.cend()));
+                                              bn::span(PALETTES.cbegin(), PALETTES.cend()),
+                                              bn::span(DELEGATES.cbegin(), DELEGATES.cend()));
     ibn::sprite_text_typewriter right_writer(text_generator, RESUME_KEY, SKIP_KEY,
-                                             bn::span(PALETTES.cbegin(), PALETTES.cend()));
+                                             bn::span(PALETTES.cbegin(), PALETTES.cend()),
+                                             bn::span(DELEGATES.cbegin(), DELEGATES.cend()));
 
     out_vec_t out_left, out_center, out_right;
 

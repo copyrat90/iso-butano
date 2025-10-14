@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ibn_delegate.h"
+
 #include <bn_fixed_point.h>
 #include <bn_generic_pool.h>
 #include <bn_keypad.h>
@@ -20,6 +22,14 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+
+#ifndef IBN_CFG_SPRITE_TEXT_TYPEWRITER_PALETTES_MAX_SIZE
+#define IBN_CFG_SPRITE_TEXT_TYPEWRITER_PALETTES_MAX_SIZE 11
+#endif
+
+#ifndef IBN_CFG_SPRITE_TEXT_TYPEWRITER_DELEGATES_MAX_SIZE
+#define IBN_CFG_SPRITE_TEXT_TYPEWRITER_DELEGATES_MAX_SIZE 11
+#endif
 
 namespace bn
 {
@@ -40,10 +50,14 @@ namespace ibn
 /// * `⏯`: Pause until `resume_key` is pressed.
 /// * `⓵`, `⓶`, ..., `⓾`: Pause for `N * wait_updates`.
 /// * `⓿`, `❶`, ..., `❿`: Change the palette index.
+/// * `⓪`, `①`, ..., `⑩`: Call custom delegate.
 class sprite_text_typewriter
 {
 public:
-    static constexpr int PALETTES_MAX_SIZE = 11;
+    static constexpr int PALETTES_MAX_SIZE = IBN_CFG_SPRITE_TEXT_TYPEWRITER_PALETTES_MAX_SIZE;
+    static constexpr int DELEGATES_MAX_SIZE = IBN_CFG_SPRITE_TEXT_TYPEWRITER_DELEGATES_MAX_SIZE;
+
+    using delegate_type = delegate<void(int)>;
 
 public:
     /// @brief Constructor.
@@ -56,7 +70,8 @@ public:
     sprite_text_typewriter(const bn::sprite_text_generator& text_generator,
                            bn::keypad::key_type resume_key = bn::keypad::key_type::A,
                            bn::keypad::key_type skip_key = bn::keypad::key_type::B,
-                           const bn::span<const bn::sprite_palette_item* const>& palettes = {});
+                           const bn::span<const bn::sprite_palette_item* const>& palettes = {},
+                           const bn::span<const delegate_type>& delegates = {});
 
 public:
     /// @brief Updates the typewriting.
@@ -128,6 +143,9 @@ private:
     bool check_word_wrap() const;
 
     void render_chunk(int current_line_width, int new_chunk_width);
+
+private:
+    void call_custom_delegate(int delegate_index);
 
 private:
     class state;
@@ -248,6 +266,7 @@ private:
     const bn::sprite_text_generator& _text_generator;
     const int _max_chunk_width;
     const bn::vector<const bn::sprite_palette_item*, PALETTES_MAX_SIZE> _palettes;
+    const bn::vector<delegate_type, DELEGATES_MAX_SIZE> _delegates;
     bn::keypad::key_type _resume_key;
     bn::keypad::key_type _skip_key;
 

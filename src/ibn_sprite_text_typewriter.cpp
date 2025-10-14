@@ -25,6 +25,10 @@ constexpr bn::utf8_character CH_PAL_A_0("⓿");
 constexpr bn::utf8_character CH_PAL_A_1("❶");
 constexpr bn::utf8_character CH_PAL_B_0("🄌");
 constexpr bn::utf8_character CH_PAL_B_1("➊");
+constexpr bn::utf8_character CH_DELE_A_0("⓪");
+constexpr bn::utf8_character CH_DELE_A_1("①");
+constexpr bn::utf8_character CH_DELE_B_0("🄋");
+constexpr bn::utf8_character CH_DELE_B_1("➀");
 
 constexpr bool is_whitespace(bn::utf8_character ch)
 {
@@ -35,8 +39,13 @@ constexpr bool is_control_char(bn::utf8_character ch)
 {
     return ch.data() == CH_PAUSE_MANUAL.data() ||
            (CH_PAUSE_1.data() <= ch.data() && ch.data() <= CH_PAUSE_1.data() + 9) || ch.data() == CH_PAL_A_0.data() ||
-           (CH_PAL_A_1.data() <= ch.data() && ch.data() <= CH_PAL_A_1.data() + 9) || ch.data() == CH_PAL_B_0.data() ||
-           (CH_PAL_B_1.data() <= ch.data() && ch.data() <= CH_PAL_B_1.data() + 9);
+           (CH_PAL_A_1.data() <= ch.data() &&
+            ch.data() <= CH_PAL_A_1.data() + sprite_text_typewriter::PALETTES_MAX_SIZE - 2) ||
+           ch.data() == CH_PAL_B_0.data() || (CH_PAL_B_1.data() <= ch.data() && ch.data() <= CH_PAL_B_1.data() + 9) ||
+           ch.data() == CH_DELE_A_0.data() ||
+           (CH_DELE_A_1.data() <= ch.data() &&
+            ch.data() <= CH_DELE_A_1.data() + sprite_text_typewriter::DELEGATES_MAX_SIZE - 2) ||
+           ch.data() == CH_DELE_B_0.data() || (CH_DELE_B_1.data() <= ch.data() && ch.data() <= CH_DELE_B_1.data() + 9);
 }
 
 auto init_palettes(const bn::sprite_text_generator& text_generator,
@@ -55,15 +64,28 @@ auto init_palettes(const bn::sprite_text_generator& text_generator,
     return result;
 }
 
+auto init_delegates(const bn::span<const sprite_text_typewriter::delegate_type>& delegates)
+{
+    BN_ASSERT(delegates.size() <= sprite_text_typewriter::DELEGATES_MAX_SIZE, "Too many delegates: ", delegates.size());
+
+    bn::vector<sprite_text_typewriter::delegate_type, sprite_text_typewriter::DELEGATES_MAX_SIZE> result;
+    for (const auto dele : delegates)
+        result.push_back(dele);
+
+    return result;
+}
+
 } // namespace
 
 sprite_text_typewriter::sprite_text_typewriter(const bn::sprite_text_generator& text_generator,
                                                bn::keypad::key_type resume_key, bn::keypad::key_type skip_key,
-                                               const bn::span<const bn::sprite_palette_item* const>& palettes)
+                                               const bn::span<const bn::sprite_palette_item* const>& palettes,
+                                               const bn::span<const delegate_type>& delegates)
     : _text_generator(text_generator),
       _max_chunk_width(text_generator.font().item().shape_size().height() >= 32 ? 64 : 32),
-      _palettes(init_palettes(text_generator, palettes)), _resume_key(resume_key), _skip_key(skip_key),
-      _state(create_state<done_state>()), _next_state(nullptr, state_deleter(_state_pool))
+      _palettes(init_palettes(text_generator, palettes)), _delegates(init_delegates(delegates)),
+      _resume_key(resume_key), _skip_key(skip_key), _state(create_state<done_state>()),
+      _next_state(nullptr, state_deleter(_state_pool))
 {
     BN_ASSERT(!text_generator.one_sprite_per_character(), "DO NOT set `one_sprite_per_character`!");
     BN_ASSERT((static_cast<std::uint16_t>(resume_key) & static_cast<std::uint16_t>(skip_key)) == 0,
@@ -288,6 +310,11 @@ void sprite_text_typewriter::render_chunk(int current_line_width, int new_chunk_
     gen.set_palette_item(prev_palette);
 }
 
+void sprite_text_typewriter::call_custom_delegate(int delegate_index)
+{
+    _delegates[delegate_index](delegate_index);
+}
+
 bool sprite_text_typewriter::state::skip_if_key_pressed(sprite_text_typewriter& writer)
 {
     if (bn::keypad::pressed(writer._skip_key))
@@ -340,7 +367,8 @@ void sprite_text_typewriter::type_state::update(sprite_text_typewriter& writer)
             break_loop = true;
         }
         else if (ch.data() == CH_PAL_A_0.data() ||
-                 (CH_PAL_A_1.data() <= ch.data() && ch.data() <= CH_PAL_A_1.data() + 9))
+                 (CH_PAL_A_1.data() <= ch.data() &&
+                  ch.data() <= CH_PAL_A_1.data() + sprite_text_typewriter::PALETTES_MAX_SIZE - 2))
         {
             const int pal_idx = (ch.data() == CH_PAL_A_0.data()) ? 0 : ch.data() - CH_PAL_A_1.data() + 1;
             change_palette_index(pal_idx, writer);
@@ -350,6 +378,19 @@ void sprite_text_typewriter::type_state::update(sprite_text_typewriter& writer)
         {
             const int pal_idx = (ch.data() == CH_PAL_B_0.data()) ? 0 : ch.data() - CH_PAL_B_1.data() + 1;
             change_palette_index(pal_idx, writer);
+        }
+        else if (ch.data() == CH_DELE_A_0.data() ||
+                 (CH_DELE_A_1.data() <= ch.data() &&
+                  ch.data() <= CH_DELE_A_1.data() + sprite_text_typewriter::DELEGATES_MAX_SIZE - 2))
+        {
+            const int dele_idx = (ch.data() == CH_DELE_A_0.data()) ? 0 : ch.data() - CH_DELE_A_1.data() + 1;
+            writer.call_custom_delegate(dele_idx);
+        }
+        else if (ch.data() == CH_DELE_B_0.data() ||
+                 (CH_DELE_B_1.data() <= ch.data() && ch.data() <= CH_DELE_B_1.data() + 9))
+        {
+            const int dele_idx = (ch.data() == CH_DELE_B_0.data()) ? 0 : ch.data() - CH_DELE_B_1.data() + 1;
+            writer.call_custom_delegate(dele_idx);
         }
         else // Rendered text character
         {
@@ -542,7 +583,8 @@ void sprite_text_typewriter::skip_state::update(sprite_text_typewriter& writer)
             // Ignore timed pause commands in skip
         }
         else if (ch.data() == CH_PAL_A_0.data() ||
-                 (CH_PAL_A_1.data() <= ch.data() && ch.data() <= CH_PAL_A_1.data() + 9))
+                 (CH_PAL_A_1.data() <= ch.data() &&
+                  ch.data() <= CH_PAL_A_1.data() + sprite_text_typewriter::PALETTES_MAX_SIZE - 2))
         {
             const int pal_idx = (ch.data() == CH_PAL_A_0.data()) ? 0 : ch.data() - CH_PAL_A_1.data() + 1;
             change_palette_index(pal_idx, writer);
@@ -552,6 +594,19 @@ void sprite_text_typewriter::skip_state::update(sprite_text_typewriter& writer)
         {
             const int pal_idx = (ch.data() == CH_PAL_B_0.data()) ? 0 : ch.data() - CH_PAL_B_1.data() + 1;
             change_palette_index(pal_idx, writer);
+        }
+        else if (ch.data() == CH_DELE_A_0.data() ||
+                 (CH_DELE_A_1.data() <= ch.data() &&
+                  ch.data() <= CH_DELE_A_1.data() + sprite_text_typewriter::DELEGATES_MAX_SIZE - 2))
+        {
+            const int dele_idx = (ch.data() == CH_DELE_A_0.data()) ? 0 : ch.data() - CH_DELE_A_1.data() + 1;
+            writer.call_custom_delegate(dele_idx);
+        }
+        else if (ch.data() == CH_DELE_B_0.data() ||
+                 (CH_DELE_B_1.data() <= ch.data() && ch.data() <= CH_DELE_B_1.data() + 9))
+        {
+            const int dele_idx = (ch.data() == CH_DELE_B_0.data()) ? 0 : ch.data() - CH_DELE_B_1.data() + 1;
+            writer.call_custom_delegate(dele_idx);
         }
         else // Rendered text character
         {
