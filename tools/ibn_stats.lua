@@ -10,8 +10,11 @@ last_max_cpu = 0
 cur_max_cpu = 0
 reset_max_cpu_counter = reset_max_cpu_period
 
+cpu_usages = {}
+max_cpu_usages_count = 240
+
 function print_stats()
-    stats = emu.getLabelAddress("ibn_stats_instance_inst")
+    local stats = emu.getLabelAddress("ibn_stats_instance_inst")
 
     if stats then
         if reset_max_cpu_counter == 0 then
@@ -21,17 +24,39 @@ function print_stats()
         end
         reset_max_cpu_counter = reset_max_cpu_counter - 1
 
-        last_used_cpu = emu.read32(stats.address, stats.memType, false)
-        used_ew = emu.read32(stats.address + 4, stats.memType, false)
-        max_used_iw = emu.read16(stats.address + 8, stats.memType, false)
-        used_bg_tiles = emu.read16(stats.address + 10, stats.memType, false)
-        used_bg_maps = emu.read16(stats.address + 12, stats.memType, false)
-        used_bg_palettes = emu.read16(stats.address + 14, stats.memType, false)
-        used_sprite_tiles = emu.read16(stats.address + 16, stats.memType, false)
-        used_sprite_palettes = emu.read16(stats.address + 18, stats.memType, false)
+        local last_used_cpu = emu.read32(stats.address, stats.memType, false)
+        local used_ew = emu.read32(stats.address + 4, stats.memType, false)
+        local max_used_iw = emu.read16(stats.address + 8, stats.memType, false)
+        local used_bg_tiles = emu.read16(stats.address + 10, stats.memType, false)
+        local used_bg_maps = emu.read16(stats.address + 12, stats.memType, false)
+        local used_bg_palettes = emu.read16(stats.address + 14, stats.memType, false)
+        local used_sprite_tiles = emu.read16(stats.address + 16, stats.memType, false)
+        local used_sprite_palettes = emu.read16(stats.address + 18, stats.memType, false)
 
         cur_max_cpu = last_used_cpu > cur_max_cpu and last_used_cpu or cur_max_cpu
 
+        -- store recent cpu logs
+        if #cpu_usages >= max_cpu_usages_count then
+            table.remove(cpu_usages, 1)
+        end
+        table.insert(cpu_usages, last_used_cpu)
+
+        -- draw cpu usage graph
+        cpu_graph_color = 0x40FFFFFF
+        cpu_graph_100_color = 0x400000FF
+
+        emu.drawLine(240 - max_cpu_usages_count, 160 - 100, 240, 160 - 100, cpu_graph_100_color)
+        if #cpu_usages >= 2 then
+            for i = 1, #cpu_usages - 1 do
+                local x1 = 240 - #cpu_usages + i - 1
+                local x2 = x1 + 1
+                local y1 = 160 - cpu_usages[i]
+                local y2 = 160 - cpu_usages[i + 1]
+                emu.drawLine(x1, y1, x2, y2, cpu_graph_color)
+            end
+        end
+
+        -- draw strings
         text_color = 0x80FFFFFF
         bg_color = 0x80000000
 
