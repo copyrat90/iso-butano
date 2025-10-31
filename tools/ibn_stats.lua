@@ -42,23 +42,26 @@ function print_stats()
         table.insert(cpu_usages, last_used_cpu)
 
         -- draw cpu usage graph
-        cpu_graph_color = 0x40FFFFFF
-        cpu_graph_100_color = 0x400000FF
+        local cpu_graph_transparency = 0x40000000
+        local cpu_graph_100_color = cpu_graph_transparency | 0xFF8080
 
         emu.drawLine(240 - max_cpu_usages_count, 160 - 100, 240, 160 - 100, cpu_graph_100_color)
-        if #cpu_usages >= 2 then
-            for i = 1, #cpu_usages - 1 do
-                local x1 = 240 - #cpu_usages + i - 1
-                local x2 = x1 + 1
-                local y1 = 160 - cpu_usages[i]
-                local y2 = 160 - cpu_usages[i + 1]
-                emu.drawLine(x1, y1, x2, y2, cpu_graph_color)
-            end
+        for i = 1, #cpu_usages - 1 do
+            local x1 = 240 - #cpu_usages + i - 1
+            local x2 = x1 + 1
+            local y1 = 160 - cpu_usages[i]
+            local y2 = 160 - cpu_usages[i + 1]
+
+            local clamped_cpu_usage = math.min(100, math.max(0, math.max(cpu_usages[i], cpu_usages[i + 1])))
+            local r = math.floor(clamped_cpu_usage / 100 * 255)
+            local g = math.floor((100 - clamped_cpu_usage) / 100 * 255)
+            local cpu_graph_color = cpu_graph_transparency | (r << 16) | (g << 8)
+            emu.drawLine(x1, y1, x2, y2, cpu_graph_color)
         end
 
         -- draw strings
-        text_color = 0x80FFFFFF
-        bg_color = 0x80000000
+        local text_color = 0x80FFFFFF
+        local bg_color = 0x80000000
 
         emu.drawString(0, 0 * 9, string.format("cpu: %d%%", last_max_cpu), text_color, bg_color)
         emu.drawString(0, 1 * 9, string.format("iw: %d/%d (%.0f%%)", max_used_iw, 32768, max_used_iw / 32768 * 100),
