@@ -175,7 +175,11 @@ private:
         auto await_suspend(std::coroutine_handle<void> continuation) noexcept -> std::coroutine_handle<void>
         {
             _handle.promise().set_continuation(continuation);
-            return _handle;
+
+            if constexpr (LazyStart)
+                return _handle;
+            else
+                return std::noop_coroutine();
         }
 
     protected:
