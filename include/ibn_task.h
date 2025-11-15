@@ -317,6 +317,8 @@ public:
 
             auto await_resume() noexcept -> decltype(auto)
             {
+                BN_BASIC_ASSERT(this->_handle, "task is not valid");
+
                 return this->_handle.promise().result();
             }
         };
@@ -334,6 +336,8 @@ public:
 
             auto await_resume() noexcept -> decltype(auto)
             {
+                BN_BASIC_ASSERT(this->_handle, "task is not valid");
+
                 return std::move(this->_handle.promise()).result();
             }
         };
