@@ -13,6 +13,9 @@ reset_max_cpu_counter = reset_max_cpu_period
 cpu_usages = {}
 max_cpu_usages_count = 240
 
+text_color = 0x80FFFFFF
+bg_color = 0x80000000
+
 function print_stats()
     local stats = emu.getLabelAddress("ibn_stats_instance_inst")
 
@@ -60,11 +63,8 @@ function print_stats()
         end
 
         -- draw strings
-        local text_color = 0x80FFFFFF
-        local bg_color = 0x80000000
-
         emu.drawString(0, 0 * 9, string.format("cpu: %d%%", last_max_cpu), text_color, bg_color)
-        emu.drawString(0, 1 * 9, string.format("iw: %d/%d (%.0f%%)", max_used_iw, 32768, max_used_iw / 32768 * 100),
+        emu.drawString(0, 1 * 9, string.format("iw: %d/%d (%.0f%%) (max)", max_used_iw, 32768, max_used_iw / 32768 * 100),
             text_color, bg_color)
         emu.drawString(0, 2 * 9, string.format("ew: %d/%d (%.0f%%)", used_ew, 262144, used_ew / 262144 * 100), text_color,
             bg_color)
