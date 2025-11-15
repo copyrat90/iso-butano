@@ -6,6 +6,7 @@
 //
 // Changes introduced by copyrat90 are:
 // * Select between `lazy_task` or `eager_task` via template parameter `bool LazyStart`.
+// * Custom stateless allocator support for promise types.
 // * Get rid of exceptions, as exceptions are disabled in Butano by default.
 // * Promise types are "private" by design.
 //   * Add seperate `task::result()` getters because of this.
@@ -17,6 +18,8 @@
 #include <bn_optional.h>
 
 #include <coroutine>
+#include <cstddef>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -26,9 +29,14 @@ namespace ibn
 namespace priv
 {
 
-template <bool LazyStart>
+template <bool LazyStart, typename Allocator>
 class promise_base
 {
+public:
+    static_assert(std::allocator_traits<Allocator>::is_always_equal::value, "Stateful allocator not supported");
+    static_assert(sizeof(typename std::allocator_traits<Allocator>::value_type) == 1,
+                  "Allocator is not byte allocator");
+
 private:
     using initial_suspend_type = std::conditional_t<LazyStart, std::suspend_always, std::suspend_never>;
 
@@ -86,12 +94,23 @@ public:
         return _continuation;
     }
 
+public:
+    void* operator new(std::size_t size)
+    {
+        return static_cast<void*>(Allocator{}.allocate(size));
+    }
+
+    void operator delete(void* ptr, std::size_t size)
+    {
+        Allocator{}.deallocate(reinterpret_cast<std::byte*>(ptr), size);
+    }
+
 private:
     std::coroutine_handle<void> _continuation;
 };
 
-template <typename T, bool LazyStart>
-class promise_t : public promise_base<LazyStart>
+template <typename T, bool LazyStart, typename Allocator>
+class promise_t : public promise_base<LazyStart, Allocator>
 {
 public:
     template <typename U>
@@ -119,8 +138,8 @@ private:
     bn::optional<T> _result;
 };
 
-template <bool LazyStart>
-class promise_t<void, LazyStart> : public promise_base<LazyStart>
+template <bool LazyStart, typename Allocator>
+class promise_t<void, LazyStart, Allocator> : public promise_base<LazyStart, Allocator>
 {
 public:
     void return_void() noexcept {};
@@ -130,8 +149,8 @@ public:
     }
 };
 
-template <typename T, bool LazyStart>
-class promise_t<T&, LazyStart> : public promise_base<LazyStart>
+template <typename T, bool LazyStart, typename Allocator>
+class promise_t<T&, LazyStart, Allocator> : public promise_base<LazyStart, Allocator>
 {
 public:
     void return_value(T& value) noexcept
@@ -150,7 +169,7 @@ private:
 
 } // namespace priv
 
-template <typename T, bool LazyStart>
+template <typename T, bool LazyStart, typename Allocator = std::allocator<std::byte>>
 class [[nodiscard]] task
 {
 public:
@@ -187,7 +206,7 @@ private:
     };
 
 public:
-    class promise_type : public priv::promise_t<T, LazyStart>
+    class promise_type : public priv::promise_t<T, LazyStart, Allocator>
     {
     public:
         auto get_return_object() noexcept -> task
@@ -372,10 +391,16 @@ private:
     handle_type _handle;
 };
 
-template <typename T>
-using lazy_task = task<T, true>;
+template <typename T, typename Allocator>
+using lazy_task_t = task<T, true, Allocator>;
+
+template <typename T, typename Allocator>
+using eager_task_t = task<T, false, Allocator>;
 
 template <typename T>
-using eager_task = task<T, false>;
+using lazy_task = lazy_task_t<T, std::allocator<std::byte>>;
+
+template <typename T>
+using eager_task = eager_task_t<T, std::allocator<std::byte>>;
 
 } // namespace ibn
