@@ -72,7 +72,7 @@ void custom_delegate_callback(int dele_idx)
     BN_LOG("custom_delegate_callback(", dele_idx, ")");
 }
 
-constexpr bn::array<const ibn::delegate<void(int)>, 11> DELEGATES = {
+const bn::array<const ibn::function<void(int)>, 11> DELEGATES = {
     custom_delegate_callback, custom_delegate_callback, custom_delegate_callback, custom_delegate_callback,
     custom_delegate_callback, custom_delegate_callback, custom_delegate_callback, custom_delegate_callback,
     custom_delegate_callback, custom_delegate_callback, custom_delegate_callback,

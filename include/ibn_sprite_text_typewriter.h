@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ibn_delegate.h"
+#include "ibn_function.h"
 
 #include <bn_fixed_point.h>
 #include <bn_generic_pool.h>
@@ -57,7 +57,7 @@ public:
     static constexpr int PALETTES_MAX_SIZE = IBN_CFG_SPRITE_TEXT_TYPEWRITER_PALETTES_MAX_SIZE;
     static constexpr int DELEGATES_MAX_SIZE = IBN_CFG_SPRITE_TEXT_TYPEWRITER_DELEGATES_MAX_SIZE;
 
-    using delegate_type = delegate<void(int)>;
+    using delegate_type = function<void(int)>;
 
 public:
     /// @brief Constructor.
@@ -266,7 +266,7 @@ private:
     const bn::sprite_text_generator& _text_generator;
     const int _max_chunk_width;
     const bn::vector<const bn::sprite_palette_item*, PALETTES_MAX_SIZE> _palettes;
-    const bn::vector<delegate_type, DELEGATES_MAX_SIZE> _delegates;
+    bn::vector<delegate_type, DELEGATES_MAX_SIZE> _delegates;
     bn::keypad::key_type _resume_key;
     bn::keypad::key_type _skip_key;
 

@@ -3,5 +3,5 @@
 
 # vendors
 include/ibn_crc32.h linguist-vendored
-include/ibn_delegate.h linguist-vendored
+include/ibn_function.h linguist-vendored
 src/ibn_crc32.cpp linguist-vendored

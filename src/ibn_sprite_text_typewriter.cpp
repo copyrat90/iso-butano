@@ -69,7 +69,7 @@ auto init_delegates(const bn::span<const sprite_text_typewriter::delegate_type>&
     BN_ASSERT(delegates.size() <= sprite_text_typewriter::DELEGATES_MAX_SIZE, "Too many delegates: ", delegates.size());
 
     bn::vector<sprite_text_typewriter::delegate_type, sprite_text_typewriter::DELEGATES_MAX_SIZE> result;
-    for (const auto dele : delegates)
+    for (const auto& dele : delegates)
         result.push_back(dele);
 
     return result;

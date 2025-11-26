@@ -5,7 +5,7 @@
 
 #include "ibn_observer_fwd.h"
 
-#include "ibn_delegate.h"
+#include "ibn_function.h"
 
 #include <bn_intrusive_list.h>
 
@@ -79,7 +79,7 @@ public:
     using subject_t = subject<Ret(Args...)>;
 
 public:
-    delegate<Ret(Args...)> callback;
+    function<Ret(Args...)> callback;
 
 public:
     ~observer()
