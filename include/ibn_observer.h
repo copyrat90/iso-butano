@@ -9,6 +9,8 @@
 
 #include <bn_intrusive_list.h>
 
+#include <utility>
+
 namespace ibn
 {
 
@@ -34,6 +36,11 @@ public:
             cur = next;
         }
     }
+
+    subject() = default;
+
+    subject(const subject&) = delete;
+    subject& operator=(const subject&) = delete;
 
 public:
     void attach(observer_t& obser)
@@ -62,7 +69,7 @@ public:
             auto next = cur;
             ++next;
 
-            cur->callback(std::forward<CallArgs>(args)...);
+            cur->_callback(std::forward<CallArgs>(args)...);
 
             cur = next;
         }
@@ -79,14 +86,23 @@ public:
     using subject_t = subject<Ret(Args...)>;
 
 public:
-    function<Ret(Args...)> callback;
-
-public:
     ~observer()
     {
         unsubscribe();
     }
 
+    observer(const function<Ret(Args...)>& callback) : _callback(callback)
+    {
+    }
+
+    observer(function<Ret(Args...)>&& callback) : _callback(std::move(callback))
+    {
+    }
+
+    observer(const observer&) = delete;
+    observer& operator=(const observer&) = delete;
+
+public:
     void unsubscribe()
     {
         if (_owner)
@@ -105,6 +121,8 @@ private:
     }
 
 private:
+    function<Ret(Args...)> _callback;
+
     subject_t* _owner = nullptr;
 };
 
