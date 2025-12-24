@@ -55,6 +55,8 @@ private:
     volatile std::uint16_t _used_bg_palettes = 0;     // max 256
     volatile std::uint16_t _used_sprite_tiles = 0;    // max 1024
     volatile std::uint16_t _used_sprite_palettes = 0; // max 256
+    volatile std::uint16_t _used_bgs = 0;             // default max 4
+    volatile std::uint16_t _used_sprites = 0;         // default max 128
 };
 
 } // namespace ibn

@@ -6,10 +6,12 @@
 #include <bn_bg_maps.h>
 #include <bn_bg_palettes.h>
 #include <bn_bg_tiles.h>
+#include <bn_bgs.h>
 #include <bn_core.h>
 #include <bn_memory.h>
 #include <bn_sprite_palettes.h>
 #include <bn_sprite_tiles.h>
+#include <bn_sprites.h>
 
 #if IBN_CFG_STATS_ENABLED
 
@@ -25,6 +27,8 @@ void stats::update()
     _used_bg_palettes = static_cast<std::uint16_t>(bn::bg_palettes::used_colors_count());
     _used_sprite_tiles = static_cast<std::uint16_t>(bn::sprite_tiles::used_tiles_count());
     _used_sprite_palettes = static_cast<std::uint16_t>(bn::sprite_palettes::used_colors_count());
+    _used_bgs = static_cast<std::uint16_t>(bn::bgs::used_items_count());
+    _used_sprites = static_cast<std::uint16_t>(bn::sprites::used_items_count());
 }
 
 void stats::update_iw()

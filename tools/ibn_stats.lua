@@ -35,6 +35,8 @@ function print_stats()
         local used_bg_palettes = emu.read16(stats.address + 14, stats.memType, false)
         local used_sprite_tiles = emu.read16(stats.address + 16, stats.memType, false)
         local used_sprite_palettes = emu.read16(stats.address + 18, stats.memType, false)
+        local used_bgs = emu.read16(stats.address + 20, stats.memType, false)
+        local used_sprites = emu.read16(stats.address + 22, stats.memType, false)
 
         cur_max_cpu = last_used_cpu > cur_max_cpu and last_used_cpu or cur_max_cpu
 
@@ -68,19 +70,20 @@ function print_stats()
             text_color, bg_color)
         emu.drawString(0, 2 * 9, string.format("ew: %d/%d (%.0f%%)", used_ew, 262144, used_ew / 262144 * 100), text_color,
             bg_color)
-        emu.drawString(0, 3 * 9,
+        emu.drawString(0, 3 * 9, string.format("bg\\spr: %d\\%d", used_bgs, used_sprites), text_color, bg_color)
+        emu.drawString(0, 4 * 9,
             string.format("bg_tiles: %d/%d (%.0f%%)", used_bg_tiles, 2048, used_bg_tiles / 2048 * 100), text_color,
             bg_color)
-        emu.drawString(0, 4 * 9,
+        emu.drawString(0, 5 * 9,
             string.format("bg_maps: %d/%d (%.0f%%)", used_bg_maps, 32768, used_bg_maps / 32768 * 100), text_color,
             bg_color)
-        emu.drawString(0, 5 * 9,
+        emu.drawString(0, 6 * 9,
             string.format("bg_pals: %d/%d (%.0f%%)", used_bg_palettes, 256, used_bg_palettes / 256 * 100), text_color,
             bg_color)
-        emu.drawString(0, 6 * 9,
+        emu.drawString(0, 7 * 9,
             string.format("spr_tiles: %d/%d (%.0f%%)", used_sprite_tiles, 1024, used_sprite_tiles / 1024 * 100),
             text_color, bg_color)
-        emu.drawString(0, 7 * 9,
+        emu.drawString(0, 8 * 9,
             string.format("spr_pals: %d/%d (%.0f%%)", used_sprite_palettes, 256, used_sprite_palettes / 256 * 100),
             text_color, bg_color)
     else
