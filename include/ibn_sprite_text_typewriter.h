@@ -89,6 +89,9 @@ public:
     /// @brief Indicates if the typewriting is completed.
     bool done() const;
 
+    /// @brief Indicates if the typewriting is failed, due to the sprite limit.
+    bool failed() const;
+
     /// @brief Skips the typewriting.
     void skip();
 
@@ -284,6 +287,8 @@ private:
     bn::fixed _line_spacing;
     int _max_lines;
     bn::sprite_text_generator::alignment_type _alignment;
+
+    bool _failed = false;
 
     bool _prev_whitespace = true;
     bool _paused_manual = false;

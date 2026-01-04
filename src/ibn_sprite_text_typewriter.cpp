@@ -134,6 +134,11 @@ bool sprite_text_typewriter::done() const
     return _text_char_index == _text.size();
 }
 
+bool sprite_text_typewriter::failed() const
+{
+    return _failed;
+}
+
 void sprite_text_typewriter::skip()
 {
     if (!done())
@@ -172,6 +177,8 @@ void sprite_text_typewriter::start(const bn::fixed_point& top_left_position, con
     _line_spacing = line_spacing;
     _max_lines = max_lines;
     _alignment = _text_generator.alignment();
+
+    _failed = false;
 
     _prev_whitespace = true;
     _paused_manual = false;
@@ -288,19 +295,21 @@ void sprite_text_typewriter::render_chunk(int current_line_width, int new_chunk_
         using alignment_type = bn::sprite_text_generator::alignment_type;
     case alignment_type::LEFT: {
         gen.set_alignment(alignment_type::LEFT);
-        gen.generate_top_left(_init_position.x() + current_line_width, _current_line_y, _text_chunk, *_output_sprites);
+        _failed |= !gen.generate_top_left_optional(_init_position.x() + current_line_width, _current_line_y,
+                                                   _text_chunk, *_output_sprites);
         break;
     }
     case alignment_type::CENTER: {
         gen.set_alignment(alignment_type::LEFT);
         const bn::fixed next_line_width = current_line_width + new_chunk_width;
-        gen.generate_top_left(_init_position.x() + next_line_width / 2 - new_chunk_width, _current_line_y, _text_chunk,
-                              *_output_sprites);
+        _failed |= !gen.generate_top_left_optional(_init_position.x() + next_line_width / 2 - new_chunk_width,
+                                                   _current_line_y, _text_chunk, *_output_sprites);
         break;
     }
     case alignment_type::RIGHT: {
         gen.set_alignment(alignment_type::LEFT);
-        gen.generate_top_left(_init_position.x() - new_chunk_width, _current_line_y, _text_chunk, *_output_sprites);
+        _failed |= !gen.generate_top_left_optional(_init_position.x() - new_chunk_width, _current_line_y, _text_chunk,
+                                                   *_output_sprites);
         break;
     }
     default:
