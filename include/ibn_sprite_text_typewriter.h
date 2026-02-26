@@ -287,6 +287,9 @@ private:
     bn::fixed _line_spacing;
     int _max_lines;
     bn::sprite_text_generator::alignment_type _alignment;
+    std::uint8_t _bg_priority;
+    bool _mosaic_enabled;
+    bool _blending_enabled;
 
     bool _failed = false;
 

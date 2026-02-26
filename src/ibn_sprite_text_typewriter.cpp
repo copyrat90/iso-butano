@@ -177,6 +177,9 @@ void sprite_text_typewriter::start(const bn::fixed_point& top_left_position, con
     _line_spacing = line_spacing;
     _max_lines = max_lines;
     _alignment = _text_generator.alignment();
+    _bg_priority = _text_generator.bg_priority();
+    _mosaic_enabled = _text_generator.mosaic_enabled();
+    _blending_enabled = _text_generator.blending_enabled();
 
     _failed = false;
 
@@ -289,7 +292,13 @@ void sprite_text_typewriter::render_chunk(int current_line_width, int new_chunk_
     auto& gen = const_cast<bn::sprite_text_generator&>(_text_generator);
     const auto prev_align = gen.alignment();
     const auto prev_palette = gen.palette_item();
+    const auto prev_bg_priority = gen.bg_priority();
+    const auto prev_mosaic = gen.mosaic_enabled();
+    const auto prev_blending = gen.blending_enabled();
     gen.set_palette_item(*_palettes[_palette_index]);
+    gen.set_bg_priority(_bg_priority);
+    gen.set_mosaic_enabled(_mosaic_enabled);
+    gen.set_blending_enabled(_blending_enabled);
     switch (_alignment)
     {
         using alignment_type = bn::sprite_text_generator::alignment_type;
@@ -317,6 +326,9 @@ void sprite_text_typewriter::render_chunk(int current_line_width, int new_chunk_
     }
     gen.set_alignment(prev_align);
     gen.set_palette_item(prev_palette);
+    gen.set_bg_priority(prev_bg_priority);
+    gen.set_mosaic_enabled(prev_mosaic);
+    gen.set_blending_enabled(prev_blending);
 }
 
 void sprite_text_typewriter::call_custom_delegate(int delegate_index)
