@@ -91,7 +91,7 @@ void transitions::set_alpha(kinds flags, bn::fixed alpha)
 
 void transitions::start(kinds flags, int duration_updates, bn::fixed final_alpha)
 {
-    BN_ASSERT(!(!!(flags & kinds::FADE) && (!!(flags & kinds::TRANSPARENCY) || !!(kinds::INTENSITY))),
+    BN_ASSERT(!(!!(flags & kinds::FADE) && (!!(flags & kinds::TRANSPARENCY) || !!(flags & kinds::INTENSITY))),
               "Fade and other blendings can't be enabled at the same time");
 
     if (!!(flags & kinds::FADE))
