@@ -20,37 +20,59 @@ concept optional_action = requires(T obj) {
     obj->done();
 };
 
-template <optional_action OptionalAction>
-void update_and_reset_if_done(OptionalAction& action)
+template <transitions::kinds DoneKind, optional_action OptionalAction>
+[[nodiscard]] auto update_and_reset_if_done(OptionalAction& action) -> transitions::kinds
 {
     if (action.has_value())
     {
         action->update();
         if (action->done())
+        {
             action.reset();
+            return DoneKind;
+        }
     }
+
+    return transitions::kinds::NONE;
+}
+
+template <transitions::kinds AbortedKind, optional_action OptionalAction>
+[[nodiscard]] auto reset_if_has_action(OptionalAction& action) -> transitions::kinds
+{
+    if (action.has_value())
+    {
+        action.reset();
+        return AbortedKind;
+    }
+
+    return transitions::kinds::NONE;
 }
 
 } // namespace
 
 void transitions::update()
 {
-    update_and_reset_if_done(_fade_action);
-    update_and_reset_if_done(_transparency_action);
-    update_and_reset_if_done(_intensity_action);
-    update_and_reset_if_done(_sprites_mosaic_h_action);
-    update_and_reset_if_done(_sprites_mosaic_v_action);
-    update_and_reset_if_done(_bgs_mosaic_h_action);
-    update_and_reset_if_done(_bgs_mosaic_v_action);
-    update_and_reset_if_done(_bg_pals_fade_action);
-    update_and_reset_if_done(_bg_pals_brightness_action);
-    update_and_reset_if_done(_bg_pals_grayscale_action);
-    update_and_reset_if_done(_bg_pals_contrast_action);
-    update_and_reset_if_done(_bg_pals_hue_shift_action);
-    update_and_reset_if_done(_bg_pals_intensity_action);
-    update_and_reset_if_done(_music_volume_action);
-    update_and_reset_if_done(_dmg_music_volume_action);
-    update_and_reset_if_done(_sound_volume_action);
+    kinds done_kinds = kinds::NONE;
+
+    done_kinds |= update_and_reset_if_done<kinds::FADE>(_fade_action);
+    done_kinds |= update_and_reset_if_done<kinds::TRANSPARENCY>(_transparency_action);
+    done_kinds |= update_and_reset_if_done<kinds::INTENSITY>(_intensity_action);
+    done_kinds |= update_and_reset_if_done<kinds::SPRITES_MOSAIC_HORIZONTAL>(_sprites_mosaic_h_action);
+    done_kinds |= update_and_reset_if_done<kinds::SPRITES_MOSAIC_VERTICAL>(_sprites_mosaic_v_action);
+    done_kinds |= update_and_reset_if_done<kinds::BGS_MOSAIC_HORIZONTAL>(_bgs_mosaic_h_action);
+    done_kinds |= update_and_reset_if_done<kinds::BGS_MOSAIC_VERTICAL>(_bgs_mosaic_v_action);
+    done_kinds |= update_and_reset_if_done<kinds::BG_PALS_FADE>(_bg_pals_fade_action);
+    done_kinds |= update_and_reset_if_done<kinds::BG_PALS_BRIGHTNESS>(_bg_pals_brightness_action);
+    done_kinds |= update_and_reset_if_done<kinds::BG_PALS_GRAYSCALE>(_bg_pals_grayscale_action);
+    done_kinds |= update_and_reset_if_done<kinds::BG_PALS_CONTRAST>(_bg_pals_contrast_action);
+    done_kinds |= update_and_reset_if_done<kinds::BG_PALS_HUE_SHIFT>(_bg_pals_hue_shift_action);
+    done_kinds |= update_and_reset_if_done<kinds::BG_PALS_INTENSITY>(_bg_pals_intensity_action);
+    done_kinds |= update_and_reset_if_done<kinds::MUSIC_VOLUME>(_music_volume_action);
+    done_kinds |= update_and_reset_if_done<kinds::DMG_MUSIC_VOLUME>(_dmg_music_volume_action);
+    done_kinds |= update_and_reset_if_done<kinds::SOUND_VOLUME>(_sound_volume_action);
+
+    if (done_kinds != kinds::NONE)
+        _finished.notify(done_kinds, false);
 }
 
 void transitions::set_alpha(kinds flags, bn::fixed alpha)
@@ -170,38 +192,48 @@ bool transitions::done(kinds flags) const
 
 void transitions::clear(kinds flags)
 {
+    kinds aborted_kinds = kinds::NONE;
+
     if (!!(flags & kinds::FADE))
-        _fade_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::FADE>(_fade_action);
     if (!!(flags & kinds::TRANSPARENCY))
-        _transparency_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::TRANSPARENCY>(_transparency_action);
     if (!!(flags & kinds::INTENSITY))
-        _intensity_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::INTENSITY>(_intensity_action);
     if (!!(flags & kinds::SPRITES_MOSAIC_HORIZONTAL))
-        _sprites_mosaic_h_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::SPRITES_MOSAIC_HORIZONTAL>(_sprites_mosaic_h_action);
     if (!!(flags & kinds::SPRITES_MOSAIC_VERTICAL))
-        _sprites_mosaic_v_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::SPRITES_MOSAIC_VERTICAL>(_sprites_mosaic_v_action);
     if (!!(flags & kinds::BGS_MOSAIC_HORIZONTAL))
-        _bgs_mosaic_h_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::BGS_MOSAIC_HORIZONTAL>(_bgs_mosaic_h_action);
     if (!!(flags & kinds::BGS_MOSAIC_VERTICAL))
-        _bgs_mosaic_v_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::BGS_MOSAIC_VERTICAL>(_bgs_mosaic_v_action);
     if (!!(flags & kinds::BG_PALS_FADE))
-        _bg_pals_fade_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::BG_PALS_FADE>(_bg_pals_fade_action);
     if (!!(flags & kinds::BG_PALS_BRIGHTNESS))
-        _bg_pals_brightness_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::BG_PALS_BRIGHTNESS>(_bg_pals_brightness_action);
     if (!!(flags & kinds::BG_PALS_GRAYSCALE))
-        _bg_pals_grayscale_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::BG_PALS_GRAYSCALE>(_bg_pals_grayscale_action);
     if (!!(flags & kinds::BG_PALS_CONTRAST))
-        _bg_pals_contrast_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::BG_PALS_CONTRAST>(_bg_pals_contrast_action);
     if (!!(flags & kinds::BG_PALS_HUE_SHIFT))
-        _bg_pals_hue_shift_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::BG_PALS_HUE_SHIFT>(_bg_pals_hue_shift_action);
     if (!!(flags & kinds::BG_PALS_INTENSITY))
-        _bg_pals_intensity_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::BG_PALS_INTENSITY>(_bg_pals_intensity_action);
     if (!!(flags & kinds::MUSIC_VOLUME))
-        _music_volume_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::MUSIC_VOLUME>(_music_volume_action);
     if (!!(flags & kinds::DMG_MUSIC_VOLUME))
-        _dmg_music_volume_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::DMG_MUSIC_VOLUME>(_dmg_music_volume_action);
     if (!!(flags & kinds::SOUND_VOLUME))
-        _sound_volume_action.reset();
+        aborted_kinds |= reset_if_has_action<kinds::SOUND_VOLUME>(_sound_volume_action);
+
+    if (aborted_kinds != kinds::NONE)
+        _finished.notify(aborted_kinds, true);
+}
+
+auto transitions::finished() -> subject<void(kinds, bool)>&
+{
+    return _finished;
 }
 
 } // namespace ibn

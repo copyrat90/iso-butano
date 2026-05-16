@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ibn_enum_as_flags.h"
+#include "ibn_observer.h"
 
 #include <bn_bg_palettes_actions.h>
 #include <bn_bgs_mosaic_actions.h>
@@ -82,6 +83,12 @@ public:
     /// @param flags Effect kind(s) to clear.
     void clear(kinds flags = kinds::ALL);
 
+public:
+    /// @brief Subject that can be observed to know if some transition(s) were just finished.
+    /// @param kinds Finished transition(s).
+    /// @param bool Whether the transition(s) were aborted or not.
+    auto finished() -> subject<void(kinds, bool)>&;
+
 private:
     bn::optional<bn::blending_fade_alpha_to_action> _fade_action;
     bn::optional<bn::blending_transparency_alpha_to_action> _transparency_action;
@@ -99,6 +106,9 @@ private:
     bn::optional<bn::music_volume_to_action> _music_volume_action;
     bn::optional<bn::dmg_music_volume_to_action> _dmg_music_volume_action;
     bn::optional<bn::sound_master_volume_to_action> _sound_volume_action;
+
+private:
+    subject<void(kinds, bool)> _finished;
 };
 
 IBN_ENUM_AS_FLAGS(transitions::kinds);
