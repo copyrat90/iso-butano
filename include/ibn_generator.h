@@ -2,7 +2,7 @@
 // generator - Single-header, ranges-compatible generator type built
 // on C++20 coroutines
 // Written in 2021 by Sy Brand (tartanllama@gmail.com, @TartanLlama)
-// Removed exception related code in 2026 by copyrat90
+// Edited in 2026 by copyrat90
 //
 // Documentation available at https://tl.tartanllama.xyz/
 //
@@ -23,6 +23,8 @@
 #define TL_GENERATOR_VERSION_PATCH 0
 
 #include <coroutine>
+#include <cstddef>
+#include <memory>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -30,9 +32,13 @@
 namespace ibn // (Edit) Change namespace
 {
 
-template <class T>
+template <typename T, typename Allocator = std::allocator<std::byte>>
 class generator
 {
+    static_assert(std::allocator_traits<Allocator>::is_always_equal::value, "Stateful allocator not supported");
+    static_assert(sizeof(typename std::allocator_traits<Allocator>::value_type) == 1,
+                  "Allocator is not byte allocator");
+
     struct promise
     {
         using value_type = std::remove_reference_t<T>;
@@ -40,6 +46,18 @@ class generator
         using pointer_type = std::conditional_t<std::is_pointer_v<value_type>, value_type, value_type*>;
 
         promise() = default;
+
+        // (Edit) Add promise::operator new
+        void* operator new(std::size_t size)
+        {
+            return static_cast<void*>(Allocator{}.allocate(size));
+        }
+
+        // (Edit) Add promise::operator delete
+        void operator delete(void* ptr, std::size_t size)
+        {
+            Allocator{}.deallocate(reinterpret_cast<std::byte*>(ptr), size);
+        }
 
         generator get_return_object()
         {
@@ -62,6 +80,7 @@ class generator
 
         void unhandled_exception() noexcept
         {
+            // (Edit) Remove exception handling
         }
 
         std::suspend_always yield_value(reference_type v) noexcept
